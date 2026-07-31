@@ -1,0 +1,14 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+terraform/build/
+
+# Python
+__pycache__/
+*.pyc
+
+# k6
+load-test/results/
