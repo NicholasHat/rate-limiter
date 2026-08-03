@@ -21,7 +21,7 @@ Both implementations are built from the same code package (`src/handler.py`) as 
 
 ## The race condition and the fix
 
-The naive implementation:
+The non-atomic implementation (`/naive/check`):
 
 1. `GetItem` — read the bucket, apply lazy refill in application code
 2. Check `tokens >= cost` in application code
@@ -64,7 +64,7 @@ The consequence: admission decisions on a bucket serialize. Concurrency no longe
 | `/naive/check` | 100 | 37 | 10 | 103 ms | 134 ms | 142 ms |
 | `/atomic/check` | 100 | 11 | 10 | 101 ms | 382 ms | 536 ms |
 
-- The naive endpoint admitted 3.7× its budget. Each excess admission is a lost race between one request's read and another's write.
+- The non-atomic endpoint admitted 3.7× its budget. Each excess admission is a lost race between one request's read and another's write.
 - The atomic endpoint admitted 11: capacity 10 plus ~1 token refilled during the ~1.5 s burst window. This is the correct count, and it cannot exceed capacity + refill at any concurrency level.
 - Median latency is essentially equal (~100 ms, dominated by API Gateway + Lambda + one DynamoDB round-trip). The atomic path has a longer tail (p99 536 ms vs 142 ms) because contended requests spend CAS retries, each a fresh read plus conditional write. For a rate limiter this is an acceptable trade: contention on one bucket means that client is at its limit.
 - Test shape: this account (AWS free plan) caps Lambda at 10 concurrent executions, so the burst uses 10 workers × 10 sequential requests rather than 100 simultaneous ones. An earlier 100-VU run had ~90% of requests throttled by Lambda into 500s, which made results unusable. Ten concurrent workers were sufficient to reproduce the race.
