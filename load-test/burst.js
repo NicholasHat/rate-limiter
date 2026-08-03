@@ -1,12 +1,18 @@
-// Burst test: N VUs fire one request each at the same client_id in a
-// tight window. If the endpoint over-admits, `requests_admitted` in the
-// summary exceeds the bucket capacity (plus the few tokens lazily
-// refilled during the burst).
+// Burst test: VUS concurrent workers each fire ITERS back-to-back
+// requests at the same client_id. If the endpoint over-admits,
+// `requests_admitted` in the summary exceeds the bucket capacity (plus
+// the few tokens lazily refilled during the burst).
+//
+// VUS defaults to 10 because free-plan AWS accounts cap Lambda at 10
+// concurrent executions — more VUs just get throttled into 500s, which
+// pollutes the comparison. 10 truly concurrent racers is enough to
+// demonstrate the read-then-write race.
 //
 // Env:
 //   URL        full endpoint URL (e.g. https://.../naive/check)
 //   CLIENT_ID  bucket under test (default: burst-test)
-//   VUS        concurrent requests (default: 100)
+//   VUS        concurrent workers (default: 10)
+//   ITERS      requests per worker (default: 10)
 import http from "k6/http";
 import { check } from "k6";
 import { Counter } from "k6/metrics";
@@ -15,11 +21,12 @@ const admitted = new Counter("requests_admitted");
 const denied = new Counter("requests_denied");
 
 export const options = {
+  summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
   scenarios: {
     burst: {
       executor: "per-vu-iterations",
-      vus: Number(__ENV.VUS || 100),
-      iterations: 1,
+      vus: Number(__ENV.VUS || 10),
+      iterations: Number(__ENV.ITERS || 10),
     },
   },
 };

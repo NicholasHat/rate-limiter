@@ -1,0 +1,53 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: burst.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 10 max VUs, 10m30s max duration (incl. graceful stop):
+              * burst: 10 iterations for each of 10 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+
+running (00m01.0s), 10/10 VUs, 48 complete and 0 interrupted iterations
+burst   [  48% ] 10 VUs  00m01.0s/10m0s  048/100 iters, 10 per VU
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 100     61.319259/s
+    checks_succeeded...: 100.00% 100 out of 100
+    checks_failed......: 0.00%   0 out of 100
+
+    ✓ responded 200 or 429
+
+    CUSTOM
+    requests_admitted..............: 11     6.745119/s
+    requests_denied................: 89     54.574141/s
+
+    HTTP
+    http_req_duration..............: avg=133.52ms min=76.87ms med=100.91ms max=547.81ms p(90)=219.02ms p(95)=381.95ms p(99)=535.73ms
+      { expected_response:true }...: avg=240.77ms min=98.79ms med=181.85ms max=512.96ms p(90)=489.02ms p(95)=500.99ms p(99)=510.56ms
+    http_req_failed................: 89.00% 89 out of 100
+    http_reqs......................: 100    61.319259/s
+
+    EXECUTION
+    iteration_duration.............: avg=148.54ms min=77.15ms med=101.11ms max=690.04ms p(90)=294.24ms p(95)=526.92ms p(99)=686.49ms
+    iterations.....................: 100    61.319259/s
+    vus............................: 10     min=10        max=10
+    vus_max........................: 10     min=10        max=10
+
+    NETWORK
+    data_received..................: 64 kB  39 kB/s
+    data_sent......................: 22 kB  13 kB/s
+
+
+
+
+running (00m01.6s), 00/10 VUs, 100 complete and 0 interrupted iterations
+burst ✓ [ 100% ] 10 VUs  00m01.6s/10m0s  100/100 iters, 10 per VU
