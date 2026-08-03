@@ -15,10 +15,11 @@
 //   ITERS      requests per worker (default: 10)
 import http from "k6/http";
 import { check } from "k6";
-import { Counter } from "k6/metrics";
+import { Counter, Trend } from "k6/metrics";
 
 const admitted = new Counter("requests_admitted");
 const denied = new Counter("requests_denied");
+const casRetries = new Trend("cas_retries");
 
 export const options = {
   summaryTrendStats: ["avg", "min", "med", "max", "p(90)", "p(95)", "p(99)"],
@@ -38,6 +39,7 @@ export default function () {
   check(res, { "responded 200 or 429": (r) => r.status === 200 || r.status === 429 });
 
   const body = JSON.parse(res.body);
+  if (body.retries !== undefined) casRetries.add(body.retries);
   if (res.status === 200 && body.allowed === true) {
     admitted.add(1);
   } else {

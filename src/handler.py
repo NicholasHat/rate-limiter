@@ -21,6 +21,7 @@ client is just DeleteItem.
 
 import json
 import os
+import random
 import time
 from decimal import Decimal
 
@@ -33,6 +34,11 @@ TABLE = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
 CAPACITY = float(os.environ["BUCKET_CAPACITY"])
 REFILL_RATE = float(os.environ["REFILL_RATE_PER_SECOND"])
 MAX_CAS_RETRIES = 10
+
+# "jitter" (default) sleeps a random 0..min(20ms * 2^attempt, 200ms) before
+# each CAS retry so contending losers don't immediately collide again.
+# "none" retries instantly — kept for measuring what the backoff buys.
+CAS_BACKOFF = os.environ.get("CAS_BACKOFF", "jitter")
 
 
 def naive_check(event, context):
@@ -63,9 +69,10 @@ def _handle(event, try_consume):
     if cost < 1:
         return _response(400, {"error": "cost must be a positive integer"})
 
-    allowed, remaining = try_consume(client_id, cost)
+    allowed, remaining, extras = try_consume(client_id, cost)
     return _response(
-        200 if allowed else 429, {"allowed": allowed, "remaining": remaining}
+        200 if allowed else 429,
+        {"allowed": allowed, "remaining": remaining, **extras},
     )
 
 
@@ -109,7 +116,7 @@ def _naive_try_consume(client_id, cost):
     tokens, _ = _read_bucket(client_id, now)
 
     if tokens < cost:
-        return False, int(tokens)
+        return False, int(tokens), {}
 
     # The race lives here: another request may have spent these same tokens
     # between our read and this write. The write is unconditional, so the
@@ -121,19 +128,19 @@ def _naive_try_consume(client_id, cost):
             "last_refill_timestamp": _decimal(now),
         }
     )
-    return True, int(tokens - cost)
+    return True, int(tokens - cost), {}
 
 
 # --- atomic: conditional write (compare-and-set) -----------------------------
 
 
 def _atomic_try_consume(client_id, cost):
-    for _ in range(MAX_CAS_RETRIES):
+    for attempt in range(MAX_CAS_RETRIES):
         now = time.time()
         tokens, item = _read_bucket(client_id, now)
 
         if tokens < cost:
-            return False, int(tokens)
+            return False, int(tokens), {"retries": attempt}
 
         # The write only succeeds if the bucket is still exactly as we read
         # it. Every admission changes `tokens`, so a concurrent admit —
@@ -163,12 +170,14 @@ def _atomic_try_consume(client_id, cost):
                     **seen,
                 },
             )
-            return True, int(tokens - cost)
+            return True, int(tokens - cost), {"retries": attempt}
         except ClientError as e:
             if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
                 raise
             # Lost the race — re-read and try again.
+            if CAS_BACKOFF == "jitter":
+                time.sleep(random.uniform(0, min(0.02 * 2**attempt, 0.2)))
 
     # Still contended after MAX_CAS_RETRIES: fail closed. Denying a request
     # we might have admitted is safe; over-admitting is not.
-    return False, 0
+    return False, 0, {"retries": MAX_CAS_RETRIES}

@@ -20,6 +20,7 @@ resource "aws_lambda_function" "check" {
       TABLE_NAME             = aws_dynamodb_table.buckets.name
       BUCKET_CAPACITY        = var.bucket_capacity
       REFILL_RATE_PER_SECOND = var.refill_rate_per_second
+      CAS_BACKOFF            = var.cas_backoff
     }
   }
 

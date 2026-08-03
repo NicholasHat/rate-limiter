@@ -21,3 +21,9 @@ variable "refill_rate_per_second" {
   type        = number
   default     = 1
 }
+
+variable "cas_backoff" {
+  description = "CAS retry backoff strategy for the atomic path: jitter or none"
+  type        = string
+  default     = "jitter"
+}
