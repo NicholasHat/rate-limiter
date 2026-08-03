@@ -6,8 +6,10 @@ set -euo pipefail
 CLIENT_ID="${1:?usage: reset.sh <client_id>}"
 TABLE="${TABLE:-rate-limiter-buckets}"
 
-aws dynamodb delete-item \
-  --table-name "$TABLE" \
-  --key "{\"client_id\": {\"S\": \"$CLIENT_ID\"}}"
+for key in "$CLIENT_ID" "window#$CLIENT_ID"; do
+  aws dynamodb delete-item \
+    --table-name "$TABLE" \
+    --key "{\"client_id\": {\"S\": \"$key\"}}"
+done
 
-echo "reset bucket for '$CLIENT_ID'"
+echo "reset bucket and window for '$CLIENT_ID'"

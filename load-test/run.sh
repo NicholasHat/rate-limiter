@@ -14,7 +14,7 @@ CLIENT_ID="burst-test"
 
 mkdir -p results
 
-for impl in naive atomic; do
+for impl in naive atomic window; do
   echo "=== $impl: warmup ==="
   k6 run burst.js --quiet \
     -e URL="$BASE_URL/$impl/check" -e CLIENT_ID="warmup-$impl" \
@@ -33,7 +33,7 @@ done
 
 echo
 echo "=== Verdict (bucket capacity vs admitted) ==="
-for impl in naive atomic; do
+for impl in naive atomic window; do
   admitted=$(python3 -c "import json; print(int(json.load(open('results/$impl-summary.json'))['metrics']['requests_admitted']['count']))")
   echo "$impl: admitted $admitted of $TOTAL requests"
 done

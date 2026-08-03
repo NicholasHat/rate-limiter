@@ -24,5 +24,6 @@ locals {
   implementations = {
     naive  = "handler.naive_check"
     atomic = "handler.atomic_check"
+    window = "handler.window_check"
   }
 }

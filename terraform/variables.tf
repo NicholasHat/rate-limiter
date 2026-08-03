@@ -22,6 +22,12 @@ variable "refill_rate_per_second" {
   default     = 1
 }
 
+variable "window_seconds" {
+  description = "Sliding window length in seconds; the limit per window is bucket_capacity"
+  type        = number
+  default     = 10
+}
+
 variable "cas_backoff" {
   description = "CAS retry backoff strategy for the atomic path: jitter or none"
   type        = string

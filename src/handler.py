@@ -28,11 +28,12 @@ from decimal import Decimal
 import boto3
 from botocore.exceptions import ClientError
 
-from algorithms import available_tokens
+from algorithms import available_tokens, roll_window, weighted_count
 
 TABLE = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
 CAPACITY = float(os.environ["BUCKET_CAPACITY"])
 REFILL_RATE = float(os.environ["REFILL_RATE_PER_SECOND"])
+WINDOW_SECONDS = float(os.environ.get("WINDOW_SECONDS", "10"))
 MAX_CAS_RETRIES = 10
 
 # "jitter" (default) sleeps a random 0..min(20ms * 2^attempt, 200ms) before
@@ -47,6 +48,10 @@ def naive_check(event, context):
 
 def atomic_check(event, context):
     return _handle(event, _atomic_try_consume)
+
+
+def window_check(event, context):
+    return _handle(event, _window_try_consume)
 
 
 # --- shared plumbing ---------------------------------------------------------
@@ -180,4 +185,73 @@ def _atomic_try_consume(client_id, cost):
 
     # Still contended after MAX_CAS_RETRIES: fail closed. Denying a request
     # we might have admitted is safe; over-admitting is not.
+    return False, 0, {"retries": MAX_CAS_RETRIES}
+
+
+# --- sliding window counter: same CAS pattern, different math ----------------
+#
+# Limit CAPACITY requests per WINDOW_SECONDS. State: the current fixed
+# window's start and count, plus the previous window's count; the sliding
+# estimate weights the previous count by its remaining overlap. Stored
+# under key "window#<client_id>" so the token-bucket paths (which PutItem
+# the whole item) can't clobber window state for the same client.
+
+
+def _window_try_consume(client_id, cost):
+    key = {"client_id": f"window#{client_id}"}
+
+    for attempt in range(MAX_CAS_RETRIES):
+        now = time.time()
+        item = TABLE.get_item(Key=key, ConsistentRead=True).get("Item")
+        if item is None:
+            ws, prev, curr = roll_window(-1.0, 0.0, 0.0, now, WINDOW_SECONDS)
+        else:
+            ws, prev, curr = roll_window(
+                float(item["window_start"]),
+                float(item["prev_count"]),
+                float(item["curr_count"]),
+                now,
+                WINDOW_SECONDS,
+            )
+
+        estimated = weighted_count(ws, prev, curr, now, WINDOW_SECONDS)
+        if estimated + cost > CAPACITY:
+            return False, int(max(0.0, CAPACITY - estimated)), {"retries": attempt}
+
+        try:
+            TABLE.update_item(
+                Key=key,
+                UpdateExpression="SET #ws = :ws, #p = :prev, #c = :curr",
+                ConditionExpression=(
+                    "attribute_not_exists(client_id)"
+                    if item is None
+                    else "#ws = :seen_ws AND #p = :seen_prev AND #c = :seen_curr"
+                ),
+                ExpressionAttributeNames={
+                    "#ws": "window_start",
+                    "#p": "prev_count",
+                    "#c": "curr_count",
+                },
+                ExpressionAttributeValues={
+                    ":ws": _decimal(ws),
+                    ":prev": _decimal(prev),
+                    ":curr": _decimal(curr + cost),
+                    **(
+                        {}
+                        if item is None
+                        else {
+                            ":seen_ws": item["window_start"],
+                            ":seen_prev": item["prev_count"],
+                            ":seen_curr": item["curr_count"],
+                        }
+                    ),
+                },
+            )
+            return True, int(CAPACITY - estimated - cost), {"retries": attempt}
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "ConditionalCheckFailedException":
+                raise
+            if CAS_BACKOFF == "jitter":
+                time.sleep(random.uniform(0, min(0.02 * 2**attempt, 0.2)))
+
     return False, 0, {"retries": MAX_CAS_RETRIES}
