@@ -1,0 +1,54 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: burst.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 10 max VUs, 10m30s max duration (incl. graceful stop):
+              * burst: 10 iterations for each of 10 VUs (maxDuration: 10m0s, gracefulStop: 30s)
+
+
+running (00m01.0s), 10/10 VUs, 48 complete and 0 interrupted iterations
+burst   [  48% ] 10 VUs  00m01.0s/10m0s  048/100 iters, 10 per VU
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 100     56.743706/s
+    checks_succeeded...: 100.00% 100 out of 100
+    checks_failed......: 0.00%   0 out of 100
+
+    ✓ responded 200 or 429
+
+    CUSTOM
+    cas_retries....................: avg=0.25     min=0        med=0        max=4        p(90)=1        p(95)=2        p(99)=4       
+    requests_admitted..............: 11     6.241808/s
+    requests_denied................: 89     50.501898/s
+
+    HTTP
+    http_req_duration..............: avg=142.82ms min=80.01ms  med=118.91ms max=465.27ms p(90)=224.36ms p(95)=256.42ms p(99)=419.52ms
+      { expected_response:true }...: avg=206.86ms min=100.93ms med=191.36ms max=419.05ms p(90)=311.3ms  p(95)=365.17ms p(99)=408.28ms
+    http_req_failed................: 89.00% 89 out of 100
+    http_reqs......................: 100    56.743706/s
+
+    EXECUTION
+    iteration_duration.............: avg=159.06ms min=80.14ms  med=120.74ms max=621.73ms p(90)=253.39ms p(95)=417.48ms p(99)=580.17ms
+    iterations.....................: 100    56.743706/s
+    vus............................: 10     min=10        max=10
+    vus_max........................: 10     min=10        max=10
+
+    NETWORK
+    data_received..................: 66 kB  37 kB/s
+    data_sent......................: 22 kB  12 kB/s
+
+
+
+
+running (00m01.8s), 00/10 VUs, 100 complete and 0 interrupted iterations
+burst ✓ [ 100% ] 10 VUs  00m01.8s/10m0s  100/100 iters, 10 per VU
