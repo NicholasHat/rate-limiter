@@ -27,6 +27,8 @@ from decimal import Decimal
 import boto3
 from botocore.exceptions import ClientError
 
+from algorithms import available_tokens
+
 TABLE = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
 CAPACITY = float(os.environ["BUCKET_CAPACITY"])
 REFILL_RATE = float(os.environ["REFILL_RATE_PER_SECOND"])
@@ -67,15 +69,6 @@ def _handle(event, try_consume):
     )
 
 
-def _refill(tokens, last_ts, now):
-    """Tokens available at `now`, lazily refilled since `last_ts`.
-
-    Clamped at zero elapsed time: `last_ts` may have been written by a
-    Lambda instance whose clock runs slightly ahead of ours.
-    """
-    return min(CAPACITY, tokens + max(0.0, now - last_ts) * REFILL_RATE)
-
-
 def _read_bucket(client_id, now):
     """Return (available_tokens, raw_item). raw_item is None for an
     unseen client, which is treated as a full bucket."""
@@ -85,7 +78,13 @@ def _read_bucket(client_id, now):
     if item is None:
         return CAPACITY, None
     return (
-        _refill(float(item["tokens"]), float(item["last_refill_timestamp"]), now),
+        available_tokens(
+            float(item["tokens"]),
+            float(item["last_refill_timestamp"]),
+            now,
+            CAPACITY,
+            REFILL_RATE,
+        ),
         item,
     )
 
