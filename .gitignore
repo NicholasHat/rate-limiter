@@ -9,6 +9,3 @@ terraform/build/
 # Python
 __pycache__/
 *.pyc
-
-# k6
-load-test/results/
