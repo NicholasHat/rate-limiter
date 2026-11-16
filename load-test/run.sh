@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the burst test against both implementations and save raw output.
+# Run the burst test against all three implementations and save raw output.
 # Each run: warm the Lambdas (throwaway client), reset the test bucket,
 # then fire the measured burst.
 set -euo pipefail

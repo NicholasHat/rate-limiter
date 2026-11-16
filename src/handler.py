@@ -1,4 +1,4 @@
-"""Token bucket rate limiter — two implementations, one contract.
+"""Rate limiter Lambda handlers: two token buckets and a sliding window.
 
 naive_check:  GetItem, check the token count in application code, then
               blindly PutItem the decremented count. Between the read and
@@ -12,6 +12,9 @@ atomic_check: same read and refill, but the write is a conditional
               atomically with the write, so a request that lost a race
               fails the condition and retries against fresh state.
               Admissions serialize; the bucket can never over-admit.
+
+window_check (bottom of file) applies the same compare-and-set to a
+sliding-window counter.
 
 State per client: tokens (N), last_refill_timestamp (N, epoch seconds).
 Refill is lazy: computed from elapsed time on each request, so there is

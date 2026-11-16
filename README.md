@@ -95,7 +95,7 @@ Retrying immediately after a lost CAS risks colliding again. Backoff is configur
 | none | 0.35 | 3 | 5 | 110 ms | 317 ms | 416 ms |
 | jitter | 0.25 | 2 | 4 | 119 ms | 256 ms | 420 ms |
 
-At this contention level (10 workers, one key) jitter measurably reduces retries and p95 latency, while p99 is unchanged within run-to-run noise — the worst request still pays for several round-trips. The effect should grow with concurrency; see next steps. Raw output: `results/atomic-backoff-{none,jitter}-*`.
+In this pair of runs jitter had fewer retries and a lower p95, while p99 was the same within run-to-run noise. Each row is a single 100-request run, and the headline atomic run above (0.27 retries avg, p95 310 ms) falls between the two, so the difference is small enough that I would not call it established. The effect should grow with concurrency; see next steps. Raw output: `results/atomic-backoff-{none,jitter}-*`.
 
 ## Running it
 
