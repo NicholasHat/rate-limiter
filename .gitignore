@@ -10,3 +10,10 @@ terraform/build/
 __pycache__/
 *.pyc
 .venv/
+
+# Saved plan files
+tfplan
+*.tfplan
+
+# macOS
+.DS_Store
